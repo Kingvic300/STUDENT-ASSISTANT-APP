@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"os"
 )
 
 func main() {
@@ -13,5 +14,7 @@ func main() {
 		})
 	})
 
-	router.Run(":8080") 
+	port := os.Getenv("PORT")
+
+	router.Run(":" + port)
 }
