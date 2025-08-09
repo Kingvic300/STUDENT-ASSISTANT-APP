@@ -41,7 +41,6 @@ func (userService *UserServiceImpl) CreateUser(ctx context.Context, request *req
 		return nil, errors.New("password is required")
 	}
 
-	// Check if user already exists
 	existingUser, err := userService.userRepository.FindByEmail(ctx, request.Email)
 	if err != nil {
 		return nil, err
@@ -50,7 +49,6 @@ func (userService *UserServiceImpl) CreateUser(ctx context.Context, request *req
 		return nil, errors.New("user already exists with this email")
 	}
 
-	// Map request to user model and hash password
 	user, err := mapper.MapToUser(request)
 	if err != nil {
 		return nil, err
@@ -58,20 +56,17 @@ func (userService *UserServiceImpl) CreateUser(ctx context.Context, request *req
 
 	user.Name = request.Name
 
-	// Hash password
 	hashedPassword, err := utils.HashPassword(user.Password)
 	if err != nil {
 		return nil, err
 	}
 	user.Password = hashedPassword
 
-	// Save user
 	savedUser, err := userService.userRepository.Save(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate JWT token
 	token, err := utils.GenerateJWT(savedUser.ID.Hex(), savedUser.Email, savedUser.Role)
 	if err != nil {
 		return nil, err
@@ -98,7 +93,6 @@ func (userService *UserServiceImpl) GetAllUsers(ctx context.Context) ([]*model.U
 }
 
 func (userService *UserServiceImpl) UpdateUser(ctx context.Context, id string, request *request.UpdateUserRequest) (*model.User, error) {
-	// Find existing user
 	existingUser, err := userService.userRepository.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -107,18 +101,14 @@ func (userService *UserServiceImpl) UpdateUser(ctx context.Context, id string, r
 		return nil, errors.New("user not found")
 	}
 
-	// Update fields if provided
 	if request.Name != "" {
 		existingUser.Name = request.Name
 	}
 	if request.Email != "" {
-		// Validate email format
 		validEmail, err := utils.EmailVerification(request.Email)
 		if err != nil {
 			return nil, err
 		}
-		
-		// Check if email is already taken by another user
 		userWithEmail, err := userService.userRepository.FindByEmail(ctx, validEmail)
 		if err != nil {
 			return nil, err
@@ -126,19 +116,16 @@ func (userService *UserServiceImpl) UpdateUser(ctx context.Context, id string, r
 		if userWithEmail != nil && userWithEmail.ID != existingUser.ID {
 			return nil, errors.New("email already taken by another user")
 		}
-		
 		existingUser.Email = validEmail
 	}
 	if request.Role.IsValid() {
 		existingUser.Role = request.Role
 	}
 
-	// Save updated user
 	return userService.userRepository.Save(ctx, existingUser)
 }
 
 func (userService *UserServiceImpl) DeleteUser(ctx context.Context, id string) error {
-	// Check if user exists
 	existingUser, err := userService.userRepository.FindByID(ctx, id)
 	if err != nil {
 		return err

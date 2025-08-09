@@ -8,7 +8,11 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
+	"fmt"
+	"regexp"
+
 )
+
 
 type Claims struct {
 	UserID string     `json:"user_id"`
@@ -17,19 +21,36 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
-// HashPassword hashes a password using bcrypt
+
+type InvalidEmailRegexError struct {
+	Email string
+}
+
+func (e *InvalidEmailRegexError) Error() string {
+	return fmt.Sprintf("Invalid email format: %s", e.Email)
+}
+
+func EmailVerification(email string) (string, error) {
+	regex := "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+	re := regexp.MustCompile(regex)
+
+	if re.MatchString(email) {
+		return email, nil
+	}
+
+	return "", &InvalidEmailRegexError{Email: email}
+}
+
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(bytes), err
 }
 
-// CheckPassword checks if provided password matches hash
 func CheckPassword(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
 
-// GenerateJWT generates a JWT token
 func GenerateJWT(userID, email string, role enums.Role) (string, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -51,7 +72,6 @@ func GenerateJWT(userID, email string, role enums.Role) (string, error) {
 	return token.SignedString([]byte(jwtSecret))
 }
 
-// ValidateJWT validates a JWT token and returns claims
 func ValidateJWT(tokenStr string) (*Claims, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
